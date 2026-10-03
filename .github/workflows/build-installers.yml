@@ -45,14 +45,18 @@ jobs:
           VER="${GITHUB_REF_NAME#v}"
           [ "${GITHUB_REF_TYPE}" = "tag" ] || VER="0.0.0-dev"
           cp "packaging/windows/dist/军师Chat.exe" "junshi-chat-windows-v${VER}.exe"
-          ls -la junshi-chat-windows-v${VER}.exe
-          echo "ASSET_NAME=junshi-chat-windows-v${VER}.exe" >> "$GITHUB_ENV"
+          ls -la "junshi-chat-windows-v${VER}.exe"
+          # 冒烟测试要跑的就是这个文件；名字写死会在带版本号时找不到（踩过），
+          # 所以走 GITHUB_ENV 传下去
+          echo "EXE_NAME=junshi-chat-windows-v${VER}.exe" >> "$GITHUB_ENV"
 
       - name: 冒烟测试（exe 能起来并响应接口）
         shell: bash
         run: |
           set -e
-          ./junshi-chat-windows.exe &
+          test -n "${EXE_NAME}"
+          echo "冒烟测试目标：$EXE_NAME"
+          "./${EXE_NAME}" &
           EXE_PID=$!
           ok=0
           for i in $(seq 1 40); do
