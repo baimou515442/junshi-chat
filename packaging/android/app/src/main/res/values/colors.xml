@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 与前端 --bg 一致，避免启动瞬间闪白 -->
+    <!-- 与前端深色背景一致，避免启动瞬间闪白。
+         注意：XML 注释里不能出现两个连续的连字符，Android 资源编译器会直接报错。 -->
     <color name="junshi_bg">#0E1014</color>
     <color name="junshi_accent">#FF8A5B</color>
     <color name="junshi_icon_bg">#1A1F29</color>
