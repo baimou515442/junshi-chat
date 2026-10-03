@@ -528,10 +528,14 @@ class ServerTest(unittest.TestCase):
         self.assertTrue(data["key_set"])
         self.assertNotIn("sk-live-1234567890abcdef", json.dumps(data))
         self.assertIn("…", data["key_mask"])
-        # 落盘文件里可以有 Key（用户自己填的），但权限必须是 600，且不在前端能读到的位置
+        # 落盘文件里可以有 Key（用户自己填的），但不能在前端能读到的位置。
         path = os.path.join(self.tmp, "config.json")
         self.assertTrue(os.path.isfile(path), path)
-        self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
+        # 权限收紧到 600 是 POSIX 的做法；Windows 上 os.chmod 只影响只读位，
+        # 权限由 ACL 管，拿不到 POSIX 语义。所以只在类 POSIX 系统上校验，
+        # 否则 Windows CI 会误报（踩过）。
+        if os.name == "posix":
+            self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
 
     def test_masked_key_is_not_saved_over_real_key(self):
         self.post("/api/config", {"api_key": "sk-live-1234567890abcdef"})

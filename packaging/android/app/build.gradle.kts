@@ -17,11 +17,13 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        // Chaquopy 只为这些 ABI 打包 Python 运行时。
-        // 只留 arm64 会让老设备装不上，只留 x86 又用不了模拟器；
-        // 这里留三个，APK 会大一些但兼容性最好。
+        // Chaquopy 的 Python 3.12 运行时只有这两个 ABI 可用：
+        //   构建时会明确报「Python 3.12 is not available for the ABI 'armeabi-v7a'」，
+        //   把它加回去会直接构建失败（踩过）。
+        //   arm64-v8a 覆盖 2017 年之后几乎所有手机；x86_64 是为了模拟器。
+        //   因此本 APK 不支持 32 位老机型。
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
