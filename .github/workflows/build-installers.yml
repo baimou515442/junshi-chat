@@ -1,0 +1,163 @@
+name: 构建安装包
+
+# 什么时候自动构建：
+#  - 推到 main：出一份最新的安装包
+#  - 打 v* 标签：出安装包并附到 Release 上，方便直接发下载链接给朋友
+#  - 手动触发：Actions 页面点一下就能出包
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------- Windows exe
+  windows:
+    name: Windows 单文件 exe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 先跑测试（测试不过就不出包）
+        shell: bash
+        run: python -B -m unittest discover -s tests
+
+      - name: 安装 PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: 打包
+        working-directory: packaging/windows
+        run: python -m PyInstaller --clean --noconfirm junshi.spec
+
+      - name: 重命名产物
+        shell: bash
+        run: |
+          set -e
+          ls -la packaging/windows/dist
+          cp "packaging/windows/dist/军师Chat.exe" "junshi-chat-windows.exe"
+          ls -la junshi-chat-windows.exe
+
+      - name: 冒烟测试（exe 能起来并响应接口）
+        shell: bash
+        run: |
+          set -e
+          ./junshi-chat-windows.exe &
+          EXE_PID=$!
+          ok=0
+          for i in $(seq 1 40); do
+            if curl -fsS --max-time 2 http://127.0.0.1:8765/api/health > /tmp/health.json 2>/dev/null; then
+              ok=1; break
+            fi
+            sleep 1
+          done
+          cat /tmp/health.json 2>/dev/null || true
+          kill $EXE_PID 2>/dev/null || true
+          if [ "$ok" != "1" ]; then
+            echo "exe 起来了但接口没响应，产物不可用" >&2
+            exit 1
+          fi
+          grep -q '"ok": *true' /tmp/health.json
+          echo "exe 冒烟测试通过"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: junshi-chat-windows-exe
+          path: junshi-chat-windows.exe
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------- Android apk
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 先跑测试（测试不过就不出包）
+        run: python -B -m unittest discover -s tests
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: 把 Python 引擎和前端同步进 Android 工程
+        run: |
+          chmod +x packaging/sync_android_assets.sh
+          ./packaging/sync_android_assets.sh
+
+      # 仓库里通常不放 gradle-wrapper.jar（二进制），这里按需补齐。
+      # 已经有的话就直接用，不用重复下载。
+      - name: 准备 Gradle wrapper
+        working-directory: packaging/android
+        run: |
+          set -e
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "gradle-wrapper.jar 不存在，用已安装的 gradle 生成"
+            gradle wrapper --gradle-version 8.7 --no-daemon
+          fi
+          ls -la gradle/wrapper/
+          chmod +x gradlew
+
+      - name: 构建 APK
+        working-directory: packaging/android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: 收集产物
+        run: |
+          set -e
+          find packaging/android/app/build/outputs -type f -name "*.apk" || true
+          mkdir -p out
+          cp packaging/android/app/build/outputs/apk/release/*.apk out/junshi-chat-android.apk
+          ls -la out/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: junshi-chat-android-apk
+          path: out/junshi-chat-android.apk
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------- 打标签时挂 Release
+  release:
+    name: 挂到 Release
+    needs: [windows, android]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: junshi-chat-windows-exe
+      - uses: actions/download-artifact@v4
+        with:
+          name: junshi-chat-android-apk
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            junshi-chat-windows.exe
+            junshi-chat-android.apk
+          generate_release_notes: true
+          body: |
+            军师 Chat —— 恋人陪聊 + 狗头军师内核。
+
+            - **Windows**：下载 `junshi-chat-windows.exe`，双击即可，会自动打开浏览器。
+              不需要安装 Python，不需要命令行。
+            - **Android**：下载 `junshi-chat-android.apk`，在手机上点开安装
+              （系统提示「未知来源」时选允许，这是自签名包的正常提示）。
+
+            第一次使用时在「设置」里填入你自己的 DeepSeek API Key 就能开始聊。
+            Key 只存在你自己的设备上。

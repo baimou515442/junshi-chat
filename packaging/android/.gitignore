@@ -1,0 +1,7 @@
+# 同步脚本生成的内容不进版本库：它们是复制品，源在主项目里
+app/src/main/python/junshi/
+app/src/main/python/app/
+.gradle/
+build/
+app/build/
+local.properties

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>军师 Chat · 帮你回她</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111318">
+<meta name="description" content="帮你回她的恋爱聊天助手：狗头军师内核，自带 API Key 直连大模型">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>💬</text></svg>">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div id="app" class="app" data-view="reply">
+
+  <!-- 侧栏：宽屏显示；窄屏由 CSS 改成底部标签栏 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-logo">军</span>
+      <span class="brand-text">
+        <strong>军师 Chat</strong>
+        <small>帮你回她 · 军师内核</small>
+      </span>
+    </div>
+
+    <nav class="nav" id="nav">
+      <button class="nav-item" data-go="reply" type="button">
+        <span class="nav-ico">💬</span><span class="nav-label">回她</span>
+      </button>
+      <button class="nav-item" data-go="analyze" type="button">
+        <span class="nav-ico">🔍</span><span class="nav-label">记录分析</span>
+      </button>
+      <button class="nav-item" data-go="trend" type="button">
+        <span class="nav-ico">📈</span><span class="nav-label">趋势</span>
+      </button>
+      <button class="nav-item" data-go="profile" type="button">
+        <span class="nav-ico">🗂️</span><span class="nav-label">档案</span>
+      </button>
+      <button class="nav-item" data-go="settings" type="button">
+        <span class="nav-ico">⚙️</span><span class="nav-label">设置</span>
+      </button>
+    </nav>
+
+    <div class="side-foot">
+      <button class="btn ghost tiny" id="btn-toggle-advice" type="button">建议面板：开</button>
+      <div class="side-note" id="side-status">未连接</div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ============ 回她（主功能） ============ -->
+    <section class="view" data-view="reply">
+      <header class="view-head">
+        <div class="head-main">
+          <h1>回她</h1>
+          <p class="sub" id="reply-sub">把对方最新发来的话粘进来，给你三条能直接发出去的回复</p>
+        </div>
+        <div class="head-actions">
+          <select id="reply-profile" class="select" title="选择对象档案"></select>
+          <button class="btn ghost" id="btn-clear-thread" type="button">清空对话</button>
+        </div>
+      </header>
+
+      <div class="chat-wrap">
+        <div class="chat-col">
+          <div class="messages" id="thread" aria-live="polite">
+            <div class="empty" id="thread-empty">
+              <h2>把她的原话贴进来</h2>
+              <p>比如她刚发了一句「你最好记得」。粘进来之后，军师会判断她的意思，
+                再给你三条<strong>用你自己语气</strong>写好的回复——发不发、发哪条都由你决定。</p>
+              <div class="chips" id="reply-starters">
+                <button type="button" class="chip" data-fill="你最好记得">你最好记得</button>
+                <button type="button" class="chip" data-fill="随便吧">随便吧</button>
+                <button type="button" class="chip" data-fill="我到家了">我到家了</button>
+                <button type="button" class="chip" data-fill="你最近怎么都不主动找我">你最近怎么都不主动找我</button>
+              </div>
+            </div>
+          </div>
+
+          <form class="composer" id="reply-form">
+            <textarea id="reply-input" rows="1"
+                      placeholder="粘贴她刚发来的话…（Enter 生成回复，Shift+Enter 换行）"
+                      autocomplete="off"></textarea>
+            <button class="btn primary send" id="btn-generate" type="submit">生成回复</button>
+          </form>
+        </div>
+
+        <aside class="advice-col" id="advice-col">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>军师视角</h2>
+              <span class="badge hide" id="advice-refs-badge">参考</span>
+            </div>
+            <div id="advice-body" class="advice-body">
+              <p class="muted">还没有判断。贴一句她的话，军师就会先算一遍再来给候选。</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============ 记录分析 ============ -->
+    <section class="view" data-view="analyze">
+      <header class="view-head">
+        <div class="head-main">
+          <h1>记录分析</h1>
+          <p class="sub">粘贴聊天记录，判断对方真实意图，给出 3 条可直接发送的候选</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="btn-analyze-sample" type="button">载入示例</button>
+        </div>
+      </header>
+
+      <div class="two-col">
+        <div class="col">
+          <div class="panel">
+            <div class="panel-head"><h2>聊天记录</h2>
+              <span class="hint">每行一条，用「我:」和「对方:」开头</span></div>
+            <textarea id="analyze-input" class="mono" rows="12"
+                placeholder="我: 在吗&#10;对方: 你最好记得&#10;我: 记得什么&#10;对方: 随便吧"></textarea>
+            <label class="field"><span>补充说明（可选）</span>
+              <input id="analyze-note" type="text" placeholder="比如：她昨天就这样，我忘了上周三的约定"></label>
+            <div class="row">
+              <label class="field grow">
+                <span>关系阶段</span>
+                <select id="analyze-relationship" class="select"></select>
+              </label>
+              <label class="field checkbox">
+                <input id="analyze-usekb" type="checkbox" checked><span>用知识库</span>
+              </label>
+            </div>
+            <div class="row">
+              <button class="btn primary" id="btn-analyze" type="button">开始分析</button>
+              <span class="muted small" id="analyze-status"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="panel" id="analysis-panel">
+            <div class="panel-head"><h2>分析结果</h2></div>
+            <div id="analysis-body">
+              <p class="muted">还没有分析结果。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 趋势 ============ -->
+    <section class="view" data-view="trend">
+      <header class="view-head">
+        <div class="head-main">
+          <h1>关系趋势</h1>
+          <p class="sub">按天聚合互动的方向与力度——不代表感情好坏，也不是成功率</p>
+        </div>
+        <div class="head-actions">
+          <select id="trend-preset" class="select"></select>
+          <button class="btn ghost" id="btn-trend-sample" type="button">示例曲线</button>
+        </div>
+      </header>
+
+      <div class="panel">
+        <div class="kline-head">
+          <div class="stat"><span class="stat-label">走势</span><strong id="trend-label">—</strong></div>
+          <div class="stat"><span class="stat-label">天数</span><strong id="trend-days">—</strong></div>
+          <div class="stat"><span class="stat-label">消息数</span><strong id="trend-msgs">—</strong></div>
+          <div class="stat"><span class="stat-label">起 → 止</span><strong id="trend-range">—</strong></div>
+          <div class="stat"><span class="stat-label">我 / 对方</span><strong id="trend-split">—</strong></div>
+        </div>
+        <canvas id="kline" class="kline" height="300"></canvas>
+        <div id="trend-warnings" class="warnings"></div>
+      </div>
+
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-head"><h2>导入聊天 CSV</h2></div>
+          <p class="muted small">列名认 from / sender / 说话人，text / content / 内容，time / 时间。没有时间列的记录不会被计入。</p>
+          <textarea id="trend-csv" class="mono" rows="8" placeholder="sender,content,time&#10;我,在吗,2026-09-01 20:00&#10;对方,在的,2026-09-01 20:01"></textarea>
+          <div class="row">
+            <button class="btn primary" id="btn-trend-csv" type="button">画出来</button>
+            <label class="btn ghost file-btn">
+              选择 CSV 文件<input type="file" id="trend-file" accept=".csv,.txt" hidden>
+            </label>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>怎么读这张图</h2></div>
+          <ul class="bullets">
+            <li><strong>指数</strong>：当天净倾向 × 活跃度权重，滚动平滑后映射到 0–100。</li>
+            <li><strong>只有一方说话</strong>的天，沉默的一方按中性偏下计入，所以单方面输出不会显得热。</li>
+            <li><strong>断联</strong>的日子会明确往下压，并且一定出现在曲线上，不会被跳过。</li>
+            <li><strong>灰带</strong>是 40–60 的中性区间，落在里面说明这段互动方向不明。</li>
+            <li>样本少于 12 条、跨度少于 4 天时只当参考，别据此下结论。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 档案 ============ -->
+    <section class="view" data-view="profile">
+      <header class="view-head">
+        <div class="head-main">
+          <h1>记忆</h1>
+          <p class="sub">关系的记进档案，怎么说像你自己的记成语气样本——都要你明确同意才开始存</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="btn-clear-all" type="button">清空全部数据</button>
+        </div>
+      </header>
+
+      <div class="panel consent-panel" id="consent-panel">
+        <div class="consent-text">
+          <h2 id="consent-title">长期记忆：未开启</h2>
+          <p class="muted" id="consent-desc">
+            开启后本机会保存两类东西：
+            <strong>关系记忆</strong>（对方是谁、关键事件、雷区——决定「说什么」）和
+            <strong>语气记忆</strong>（你真实发出去的话——决定「怎么说」）。
+            建议会更连贯，候选也会越来越像你自己说话。
+            <strong>学习说话方式只从你说过的话里学</strong>，不会混进对方的习惯。
+            也不会上传到除了你所配置的大模型接口以外的任何地方。随时可以撤销。
+          </p>
+        </div>
+        <div class="consent-actions">
+          <button class="btn primary" id="btn-consent-on" type="button">我同意并开启</button>
+          <button class="btn ghost" id="btn-consent-off" type="button">撤销并停止写入</button>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="col">
+          <div class="panel">
+            <div class="panel-head"><h2>新建 / 编辑对象</h2></div>
+            <input type="hidden" id="pf-id">
+            <div class="row">
+              <label class="field grow"><span>代号</span>
+                <input id="pf-codename" type="text" placeholder="比如：小美"></label>
+              <label class="field"><span>MBTI</span>
+                <input id="pf-mbti" type="text" placeholder="INFJ" maxlength="8"></label>
+            </div>
+            <div class="row">
+              <label class="field grow"><span>当前关系</span>
+                <select id="pf-status" class="select"></select></label>
+              <label class="field"><span>主观综合评分 0–100</span>
+                <input id="pf-score" type="number" min="0" max="100" placeholder="留空就不评分"></label>
+            </div>
+            <label class="field"><span>目标</span>
+              <input id="pf-goal" type="text" placeholder="推进、确认、修复，或者退出"></label>
+            <label class="field"><span>背景</span>
+              <textarea id="pf-background" rows="2" placeholder="怎么认识的、发展多久、最近的关键事件"></textarea></label>
+            <label class="field"><span>值得注意的事</span>
+              <textarea id="pf-notes" rows="2" placeholder="对方的边界、雷区、承诺与兑现情况"></textarea></label>
+            <div class="row">
+              <button class="btn primary" id="btn-pf-save" type="button">保存档案</button>
+              <button class="btn ghost" id="btn-pf-reset" type="button">清空表单</button>
+              <span class="muted small" id="pf-status-msg"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="panel">
+            <div class="panel-head"><h2>我平时怎么说话</h2><span class="hint">语气记忆</span></div>
+            <p class="muted small">
+              填几句你<strong>真实发出去过</strong>的话，每行一句。候选会模仿这些句子的用词、
+              句长和标点习惯——这是让回复像你本人最有效的办法。
+              <strong>只学你说的话，不会混进对方的习惯。</strong>
+            </p>
+            <textarea id="tone-input" rows="5"
+                placeholder="在吗&#10;行，那明天见&#10;嗯…我想想&#10;到了跟你说一声"></textarea>
+            <div class="tone-actions">
+              <button class="btn primary" id="btn-tone-save" type="button">存进语气记忆</button>
+              <button class="btn ghost" id="btn-tone-clear" type="button">清空语气样本</button>
+              <span class="muted small" id="tone-msg"></span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>已保存的对象</h2><span class="hint" id="pf-count"></span></div>
+            <p class="muted small" id="tone-summary"></p>
+            <div id="pf-list" class="pf-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 设置 ============ -->
+    <section class="view" data-view="settings">
+      <header class="view-head">
+        <div class="head-main">
+          <h1>设置</h1>
+          <p class="sub">填入你自己的 API Key 直连大模型——密钥只存在这台设备上</p>
+        </div>
+      </header>
+
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-head"><h2>大模型接口</h2><span class="hint" id="cfg-key-state"></span></div>
+          <label class="field"><span>API Key</span>
+            <div class="row">
+              <input id="cfg-key" type="password" class="grow" placeholder="sk-…（留空则不改动已保存的 Key）"
+                     autocomplete="off" spellcheck="false">
+              <button class="btn ghost" id="btn-key-show" type="button">显示</button>
+            </div>
+          </label>
+          <p class="muted small">保存后只在本机 data/config.json（权限 600）里留一份；接口回给界面的永远是掩码。</p>
+          <label class="field"><span>Base URL</span>
+            <input id="cfg-base" type="text" placeholder="https://api.deepseek.com"></label>
+          <div class="row">
+            <label class="field grow"><span>模型</span>
+              <input id="cfg-model" type="text" list="model-list" placeholder="deepseek-chat">
+              <datalist id="model-list"></datalist>
+            </label>
+            <button class="btn ghost" id="btn-models" type="button">拉取模型</button>
+          </div>
+          <div class="row">
+            <button class="btn primary" id="btn-cfg-save" type="button">保存设置</button>
+            <button class="btn ghost" id="btn-verify" type="button">测试连接</button>
+            <button class="btn ghost" id="btn-key-clear" type="button">清除 Key</button>
+            <span class="muted small" id="cfg-msg"></span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>对话偏好</h2></div>
+          <label class="field"><span>默认关系阶段</span>
+            <select id="cfg-relationship" class="select"></select></label>
+          <label class="field"><span>我想要的结果</span>
+            <input id="cfg-goal" type="text" placeholder="比如：想让关系更稳定一些"></label>
+          <label class="field"><span>我平时的说话风格</span>
+            <textarea id="cfg-style" rows="3" placeholder="比如：话少、爱用语气词、不发表情"></textarea></label>
+          <label class="field checkbox"><input id="cfg-usekb" type="checkbox" checked>
+            <span>让军师按需检索内置知识库（44 份心理、沟通、法律参考）</span></label>
+          <div class="row">
+            <button class="btn primary" id="btn-pref-save" type="button">保存偏好</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>内置知识库</h2><span class="hint" id="kb-count"></span></div>
+        <div class="row">
+          <input id="kb-query" class="grow" type="text" placeholder="搜一下，比如：依恋、投入失衡、家暴">
+          <button class="btn ghost" id="btn-kb-search" type="button">检索</button>
+        </div>
+        <div id="kb-results" class="kb-results"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="/js/app.js"></script>
+</body>
+</html>

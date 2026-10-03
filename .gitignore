@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.index.json
+data/
+build/
+dist/
+*.spec.bak
+.gradle/
+local.properties
+node_modules/

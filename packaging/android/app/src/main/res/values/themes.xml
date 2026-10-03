@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色主题，和前端配色一致：启动时不会有一瞬间的刺眼白屏 -->
+    <style name="Theme.JunshiChat" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@color/junshi_bg</item>
+        <item name="android:statusBarColor">@color/junshi_bg</item>
+        <item name="android:navigationBarColor">@color/junshi_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
