@@ -16,10 +16,11 @@ import os
 
 from PyInstaller.utils.hooks import collect_submodules
 
-# PyInstaller 的 spec 里没有 SPECPATH 这种内置变量（误用它会把路径拼成
-# packaging/packaging/windows/... 导致「script not found」——踩过）。
-# spec 执行时 __file__ 就是本文件，可靠地反推出项目根。
-_HERE = os.path.dirname(os.path.abspath(__file__))          # packaging/windows
+# spec 文件里既没有 SPECPATH，也没有 __file__（两个都踩过：
+#   SPECPATH 会让路径拼成 packaging/packaging/windows/launcher.py → script not found；
+#   __file__ 直接 NameError）。
+# PyInstaller 注入的内置变量是 **SPEC**：spec 文件的绝对路径。用它反推项目根。
+_HERE = os.path.dirname(os.path.abspath(SPEC))              # packaging/windows
 PROJECT = os.path.abspath(os.path.join(_HERE, "..", ".."))  # 项目根
 
 # launcher.py 位于 packaging/windows/，它在运行时要 sys.path 里能找到 junshi，

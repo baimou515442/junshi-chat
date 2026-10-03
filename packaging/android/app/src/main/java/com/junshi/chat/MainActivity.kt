@@ -58,7 +58,14 @@ class MainActivity : Activity() {
 
     // ---------------------------------------------------------------- UI
 
-    /** 用代码搭界面，不引 XML 布局，也就不用任何 UI 库。 */
+    /**
+     * 用代码搭界面，不引 XML 布局，也就不用任何 UI 库。
+     *
+     * @SuppressLint 是**声明级**注解，不能贴在 `web.settings.apply { }` 这种表达式上——
+     * Kotlin 会直接报「annotation is not applicable to target 'expression'」（踩过）。
+     * 所以把它放在函数上，覆盖里面开启 JS 的那一行。
+     */
+    @SuppressLint("SetJavaScriptEnabled")
     private fun buildUi() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -88,7 +95,6 @@ class MainActivity : Activity() {
         root.addView(web, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
-        @SuppressLint("SetJavaScriptEnabled")
         web.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true                  // 前端要用 localStorage 记一点偏好
