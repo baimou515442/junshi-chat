@@ -41,8 +41,12 @@ jobs:
         run: |
           set -e
           ls -la packaging/windows/dist
-          cp "packaging/windows/dist/军师Chat.exe" "junshi-chat-windows.exe"
-          ls -la junshi-chat-windows.exe
+          # 文件名带版本号，方便你区分发给朋友的是哪一版
+          VER="${GITHUB_REF_NAME#v}"
+          [ "${GITHUB_REF_TYPE}" = "tag" ] || VER="0.0.0-dev"
+          cp "packaging/windows/dist/军师Chat.exe" "junshi-chat-windows-v${VER}.exe"
+          ls -la junshi-chat-windows-v${VER}.exe
+          echo "ASSET_NAME=junshi-chat-windows-v${VER}.exe" >> "$GITHUB_ENV"
 
       - name: 冒烟测试（exe 能起来并响应接口）
         shell: bash
@@ -69,7 +73,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: junshi-chat-windows-exe
-          path: junshi-chat-windows.exe
+          path: junshi-chat-windows-v*.exe
           if-no-files-found: error
 
   # ---------------------------------------------------------------- Android apk
@@ -115,7 +119,16 @@ jobs:
 
       - name: 构建 APK
         working-directory: packaging/android
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: |
+          set -e
+          # 让 APK 的版本号跟标签一致：手机上「关于」里看到的就是你发的版本
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VER="${GITHUB_REF_NAME#v}"
+            echo "按标签写入 versionName=$VER"
+            sed -i "s/versionName = \"[^\"]*\"/versionName = \"$VER\"/" app/build.gradle.kts
+          fi
+          grep -n 'versionName' app/build.gradle.kts
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: 收集产物
         run: |
@@ -148,13 +161,13 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            junshi-chat-windows.exe
+            junshi-chat-windows-v*.exe
             junshi-chat-android.apk
           generate_release_notes: true
           body: |
             军师 Chat —— 恋人陪聊 + 狗头军师内核。
 
-            - **Windows**：下载 `junshi-chat-windows.exe`，双击即可，会自动打开浏览器。
+            - **Windows**：下载 `junshi-chat-windows-v*.exe`，双击即可，会自动打开浏览器。
               不需要安装 Python，不需要命令行。
             - **Android**：下载 `junshi-chat-android.apk`，在手机上点开安装
               （系统提示「未知来源」时选允许，这是自签名包的正常提示）。
